@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>AI宠物顾问 · 免费</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,sans-serif;background:#fdf6f0;max-width:480px;margin:0 auto}
+.header{background:#ff6b35;color:#fff;padding:32px 20px 24px;text-align:center;border-radius:0 0 20px 20px}
+.header .icon{font-size:40px;margin-bottom:8px}
+.header h1{font-size:22px;margin-bottom:6px}
+.header p{font-size:14px;opacity:.9}
+.tag{display:inline-block;background:rgba(255,255,255,.2);padding:4px 12px;border-radius:20px;font-size:12px;margin-top:10px}
+.card{background:#fff;margin:16px;border-radius:16px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.card h2{font-size:17px;color:#333;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.input-area{width:100%;min-height:120px;border:2px solid #f0f0f0;border-radius:12px;padding:14px;font-size:15px;resize:none;background:#fafafa;outline:none}
+.input-area:focus{border-color:#ff6b35}
+.btn{width:100%;background:#ff6b35;color:#fff;border:none;padding:16px;border-radius:12px;font-size:17px;font-weight:600;margin-top:12px;cursor:pointer;transition:opacity .2s}
+.btn:active{opacity:.85}
+.reply{background:#f0faf5;border:1px solid #c6f0d7;border-radius:12px;padding:16px;margin:16px;display:none}
+.reply h3{font-size:15px;color:#2d8c5c;margin-bottom:10px}
+.reply p{font-size:14px;color:#444;line-height:1.8}
+.loading{text-align:center;padding:20px;display:none}
+.loading span{color:#ff6b35;font-size:14px}
+.features{display:grid;gap:10px;margin:0 16px 16px}
+.feature{background:#fff;padding:14px 16px;border-radius:12px;font-size:13px;color:#666;display:flex;align-items:center;gap:10px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.feature .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot.orange{background:#ff6b35}
+.dot.green{background:#2d8c5c}
+.dot.blue{background:#4a90d9}
+.contact{text-align:center;padding:24px 16px}
+.contact .wx{display:inline-flex;align-items:center;gap:8px;background:#07c160;color:#fff;padding:14px 32px;border-radius:30px;font-size:16px;text-decoration:none;box-shadow:0 4px 12px rgba(7,193,96,.3)}
+.org{text-align:center;color:#bbb;font-size:12px;padding:8px 16px 30px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="icon">🐱</div>
+  <h1>AI宠物顾问</h1>
+  <p>描述宠物状况 · 免费即时分析</p>
+  <div class="tag">✅ 24小时在线</div>
+</div>
+
+<div class="card">
+  <h2>📝 描述宠物问题</h2>
+  <textarea class="input-area" id="question" placeholder="例子：&#10;• 猫咪吐了但精神还好，怎么办？&#10;• 金毛3个月大，一天喂几次？&#10;• 狗一直挠耳朵，是不是有耳螨？"></textarea>
+  <button class="btn" onclick="askAI()">免费获取建议</button>
+</div>
+
+<div class="loading" id="loading">
+  <span>🤖 AI正在分析中...</span>
+</div>
+
+<div class="reply" id="reply">
+  <h3>🤖 AI建议</h3>
+  <p id="answer"></p>
+</div>
+
+<div class="features">
+  <div class="feature"><span class="dot orange"></span> 覆盖猫狗常见养护问题</div>
+  <div class="feature"><span class="dot green"></span> 不做诊断，只给养护建议</div>
+  <div class="feature"><span class="dot blue"></span> 严重情况建议及时就医</div>
+</div>
+
+<div class="contact">
+  <a class="wx" href="javascript:alert('请添加微信：你的微信号')">💬 加微信 · 进养宠群</a>
+</div>
+
+<div class="org">
+  仅供养护参考 · 不构成医疗建议<br>紧急情况请立即联系兽医
+</div>
+
+<script>
+async function askAI(){
+  const q=document.getElementById('question').value.trim()
+  if(!q) return alert('请先描述问题')
+  document.getElementById('loading').style.display='block'
+  document.getElementById('reply').style.display='none'
+  try{
+    const resp=await fetch('https://ark.cn-beijing.volces.com/api/v3/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+atob('YXJr')+atob('LTFmYTRmODktMjNmZC00ZDcyLWI2YmItNzAyNGZmNGYxMGZkLWYyYTAz')},
+      body:JSON.stringify({
+        model:'doubao-seed-2-1-pro-260628',
+        messages:[
+          {role:'system',content:'你是宠物养护助手。用温暖简单的语言回答。给养护建议，不诊断疾病。症状严重提醒就医。回复3-5句话。'},
+          {role:'user',content:q}
+        ],
+        max_tokens:400
+      })
+    })
+    const data=await resp.json()
+    document.getElementById('loading').style.display='none'
+    document.getElementById('reply').style.display='block'
+    document.getElementById('answer').innerText=data.choices[0].message.content
+  }catch(e){
+    document.getElementById('loading').style.display='none'
+    alert('网络异常，请稍后再试')
+  }
+}
+</script>
+</body>
+</html>
