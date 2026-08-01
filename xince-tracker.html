@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>心测小程序 · 步骤追踪器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,sans-serif;background:#0f0f23;color:#e0e0e0;max-width:700px;margin:0 auto;padding:20px 16px 60px}
+.top{background:linear-gradient(135deg,#6C5CE7,#a29bfe);border-radius:20px;padding:26px;text-align:center;margin-bottom:20px}
+.top h1{font-size:22px;color:#fff;margin-bottom:6px}
+.top p{font-size:13px;opacity:.85}
+.progress-bar{background:#2a2a4e;border-radius:8px;height:10px;margin:14px 0 8px;overflow:hidden}
+.progress-fill{background:linear-gradient(90deg,#6C5CE7,#00d2ff);height:100%;border-radius:8px;transition:width .4s}
+.progress-text{font-size:13px;color:#aaa;text-align:right}
+.phase{margin-top:18px}
+.phase-title{font-size:16px;color:#fff;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.step{background:#1a1a3e;border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;cursor:pointer;border:1px solid transparent;transition:all .2s}
+.step:hover{border-color:#6C5CE7}
+.step.done{opacity:.7}
+.step.done .check{background:#0f3;color:#003b00}
+.check{width:28px;height:28px;border-radius:50%;background:#2a2a4e;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;transition:background .2s}
+.step-body{flex:1;min-width:0}
+.step-title{font-size:14px;color:#eee}
+.step-title.done-text{text-decoration:line-through;color:#888}
+.step-desc{font-size:12px;color:#777;margin-top:2px}
+.step-link{font-size:12px;color:#6C5CE7;text-decoration:none;margin-top:4px;display:inline-block}
+.link-arrow{color:#6C5CE7;font-size:18px;flex-shrink:0}
+.reset{display:block;width:100%;background:#2a2a4e;color:#888;border:none;padding:12px;border-radius:10px;font-size:13px;margin-top:20px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <h1>🧠 心测小程序 · 步骤追踪器</h1>
+  <p>AppID: wx7fd0ba8465568549 &nbsp;|&nbsp; 每完成一步点一下，进度自动保存</p>
+  <div class="progress-bar"><div class="progress-fill" id="pbar" style="width:0%"></div></div>
+  <div class="progress-text" id="ptext">0 / 0</div>
+</div>
+
+<div id="phases"></div>
+
+<button class="reset" onclick="resetAll()">🔄 重置全部进度</button>
+
+<script>
+const PHASES = [
+  { icon:"🔨", name:"开发阶段（已完成）", steps:[
+    { t:"后端API开发完成", d:"解梦/MBTI/职业/运势接口全部就绪", link:"本地运行于 8898 端口" },
+    { t:"小程序前端18个文件完成", d:"首页/解梦/答题/结果/运势 5个页面", link:"/opt/data/xince-miniapp/" },
+    { t:"浏览器Demo版完成", d:"真实调用AI，手机电脑都能打开", link:"xince-demo.html 双击打开" },
+  ]},
+  { icon:"🧪", name:"预览测试阶段（现在）", steps:[
+    { t:"下载微信开发者工具", d:"官方工具，Windows/Mac版", link:"https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html" },
+    { t:"扫码登录开发者工具", d:"用微信扫码，进入开发界面", link:"https://developers.weixin.qq.com/miniprogram/dev/devtools/login.html" },
+    { t:"导入项目", d:"选择文件夹 xince-miniapp，AppID填 wx7fd0ba8465568549", link:"https://developers.weixin.qq.com/miniprogram/dev/devtools/projectconfig.html" },
+    { t:"配置合法域名", d:"开发设置→服务器域名→添加 https://ark.cn-beijing.volces.com", link:"https://mp.weixin.qq.com 开发管理" },
+    { t:"真机预览", d:"点预览→手机微信扫码→在手机上体验", link:"https://developers.weixin.qq.com/miniprogram/dev/devtools/preview.html" },
+    { t:"测试4个功能", d:"MBTI测试、职业测试、解梦、运势 各测一遍", link:"浏览器先玩 xince-demo.html" },
+  ]},
+  { icon:"📤", name:"提交审核阶段", steps:[
+    { t:"完善小程序信息", d:"名称/头像/介绍/类目（工具→信息查询）", link:"https://mp.weixin.qq.com" },
+    { t:"提交代码审核", d:"开发管理→版本管理→提交审核", link:"https://developers.weixin.qq.com/miniprogram/dev/framework/operation.html" },
+    { t:"等待审核通过", d:"通常1-7天，留意审核通知", link:"https://mp.weixin.qq.com 站内信" },
+  ]},
+  { icon:"🚀", name:"上线推广阶段", steps:[
+    { t:"正式发布", d:"审核通过后点发布，全量上线", link:"https://mp.weixin.qq.com" },
+    { t:"冷启动", d:"发朋友圈/微信群，让朋友先测", link:"分享小程序卡片" },
+    { t:"观察数据", d:"看访问量、分享率、留存", link:"微信公众平台→统计" },
+  ]},
+];
+
+const STORAGE_KEY = "xince_steps_v1";
+
+function loadDone(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}") }catch(e){ return {} }
+}
+function saveDone(d){ localStorage.setItem(STORAGE_KEY, JSON.stringify(d)) }
+
+function render(){
+  const done = loadDone();
+  let total=0, finished=0;
+  let html = "";
+  PHASES.forEach((ph, pi)=>{
+    html += `<div class="phase"><div class="phase-title">${ph.icon} ${ph.name}</div>`;
+    ph.steps.forEach((st, si)=>{
+      const key = pi+"_"+si;
+      total++;
+      if(done[key]) finished++;
+      const cls = done[key] ? "step done" : "step";
+      const titleCls = done[key] ? "step-title done-text" : "step-title";
+      html += `<div class="${cls}" onclick="toggle('${key}')">
+        <div class="check">${done[key]?"✓":""}</div>
+        <div class="step-body">
+          <div class="${titleCls}">${st.t}</div>
+          <div class="step-desc">${st.d}</div>
+          ${st.link?`<a class="step-link" onclick="event.stopPropagation()" href="${st.link}" target="_blank">🔗 ${st.link}</a>`:""}
+        </div>
+        <div class="link-arrow">›</div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  document.getElementById("phases").innerHTML = html;
+  const pct = total ? Math.round(finished/total*100) : 0;
+  document.getElementById("pbar").style.width = pct+"%";
+  document.getElementById("ptext").textContent = finished+" / "+total+" ("+pct+"%)";
+}
+
+function toggle(key){
+  const d = loadDone();
+  d[key] = !d[key];
+  saveDone(d);
+  render();
+}
+
+function resetAll(){
+  if(confirm("确定重置所有进度？")){
+    localStorage.removeItem(STORAGE_KEY);
+    render();
+  }
+}
+
+render();
+</script>
+</body>
+</html>
